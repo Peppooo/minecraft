@@ -49,7 +49,7 @@ public:
 		fclose(file);
 		cudaMalloc(&matrix,MAX_TEX_SIZE*sizeof(rgb));
 		cudaMemcpy(matrix,h_matrix,MAX_TEX_SIZE*sizeof(rgb),cudaMemcpyHostToDevice);
-		delete[] h_matrix; // ATTENTO DIO PORCOOOOOOOOOOOOOOOOOO
+		delete[] h_matrix;
 	};
 	texture(vec3 Color = {0,0,0}):_texture(false),color(Color) {};
 	~texture() {
@@ -67,6 +67,7 @@ public:
 		if(x >= 1) x = 0.99f;
 		if(y >= 1) y = 0.99f;
 		int idx = (floor(y * height)) * width + floor(x * width);
+
 		return matrix[idx].toVec3() * (1.0f / 255);
 	}
 };

@@ -52,7 +52,7 @@ __device__ __forceinline__ vec3 compute_ray(const light* lights,const size_t& li
 		vec3 wi;
 		float pdf;
 		bool delta_brdf;
-		vec3 albedo = scene->color(hit,p_hit);
+		vec3 albedo = scene->color(hit,p_hit,n_hit);
 		vec3 f = scene->mat[hit].brdf(D,n_hit,wi,albedo,pdf,delta_brdf,state);
 
 		if(pdf <= 0 || f == vec3{0,0,0}) break;
@@ -79,6 +79,7 @@ __device__ __forceinline__ vec3 compute_ray(const light* lights,const size_t& li
 }
 
 __global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,const Scene* scene,const bvh tree,vec3* data,vec3 origin,matrix rotation,float focal_length,int reflected_rays,int ssaa,int reflections,int n_samples,int seed) {
+	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	int idx = (x + y * w);

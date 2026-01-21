@@ -79,63 +79,30 @@ void buildChildren(cube* scene,
 
 		vec3 extent = parentBounds.Max - parentBounds.Min;
 
-		float bestCost = INFINITY;
-		int   bestAxis = -1;
-		float bestSplitPos = 0.0f;
+		int ax = max_idx(extent);
+		float splitPos = extent[ax];
 
-		box bestLeftBounds,bestRightBounds;
-		int bestLeftCount = 0,bestRightCount = 0;
+		box leftBox,rightBox;
+		leftBox.reset();
+		rightBox.reset();
 
-		for(int ax = 0; ax < 3; ax++) {
-			if(extent[ax] <= 0.0f)
-				continue;
+		int leftCount = 0;
+		int rightCount = 0;
 
-			for(int b = 1; b < 8; b++) {
-				float t = b / 8.0f;
-				float splitPos = parentBounds.Min.axis(ax) + extent[ax] * t;
+		for(int i = 0; i < count; i++) {
+			int objIdx = start + i;
+			float c = scene[objIdx].center()[ax];
 
-				box leftBox,rightBox;
-				leftBox.reset();
-				rightBox.reset();
-
-				int leftCount = 0;
-				int rightCount = 0;
-
-				for(int i = 0; i < count; i++) {
-					int objIdx = start + i;
-					float c = scene[objIdx].center()[ax];
-
-					if(c < splitPos) {
-						leftBox.grow_to_include(scene[objIdx]);
-						leftCount++;
-					}
-					else {
-						rightBox.grow_to_include(scene[objIdx]);
-						rightCount++;
-					}
-				}
-
-				if(leftCount == 0 || rightCount == 0)
-					continue;
-
-				float cost =
-					leftBox.surf_area() * leftCount +
-					rightBox.surf_area() * rightCount;
-
-				if(cost < bestCost) {
-					bestCost = cost;
-					bestAxis = ax;
-					bestSplitPos = splitPos;
-					bestLeftBounds = leftBox;
-					bestRightBounds = rightBox;
-					bestLeftCount = leftCount;
-					bestRightCount = rightCount;
-				}
+			if(c < splitPos) {
+				leftBox.grow_to_include(scene[objIdx]);
+				leftCount++;
+			}
+			else {
+				rightBox.grow_to_include(scene[objIdx]);
+				rightCount++;
 			}
 		}
 
-		if(bestAxis == -1) 
-			return;
 
 		int leftChild = nodesCount++;
 		int rightChild = nodesCount++;
@@ -147,7 +114,7 @@ void buildChildren(cube* scene,
 		int j = start + count - 1;
 
 		while(i <= j) {
-			if(scene[i].center()[bestAxis] < bestSplitPos) {
+			if(scene[i].center()[ax] < splitPos) {
 				i++;
 			}
 			else {
@@ -156,13 +123,13 @@ void buildChildren(cube* scene,
 			}
 		}
 
-		nodes[leftChild].bounds = bestLeftBounds;
+		nodes[leftChild].bounds = leftBox;
 		nodes[leftChild].bounds.startIndex = start;
-		nodes[leftChild].bounds.cubesCount = bestLeftCount;
+		nodes[leftChild].bounds.cubesCount = leftCount;
 
-		nodes[rightChild].bounds = bestRightBounds;
-		nodes[rightChild].bounds.startIndex = start + bestLeftCount;
-		nodes[rightChild].bounds.cubesCount = bestRightCount;
+		nodes[rightChild].bounds = rightBox;
+		nodes[rightChild].bounds.startIndex = start + leftCount;
+		nodes[rightChild].bounds.cubesCount = rightCount;;
 
 		// === Recurse ===
 		if(nodesCount < max_nodes - 2) {

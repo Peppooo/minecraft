@@ -4,8 +4,6 @@
 #define MAX_OBJ 1000000
 
 struct Scene {
-private:
-	vec3 t_normal[MAX_OBJ];
 public:
 	vec3 _min[MAX_OBJ];
 	vec3 _max[MAX_OBJ];
@@ -21,8 +19,8 @@ public:
 		norm[sceneSize] = obj.norm;
 		sceneSize++;
 	}
-	__device__ __forceinline__ vec3 color(const int idx,const vec3& p) const {
-		return tex[idx]->at(p,t_normal[idx]);
+	__device__ __forceinline__ vec3 color(const int idx,const vec3& p,vec3& N) const {
+		return tex[idx]->at(p,N);
 	};
 	__device__ __forceinline__ bool intersect(const int idx,const vec3& O,const vec3& D,vec3& p,vec3& N,double* dist = nullptr) const
 	{

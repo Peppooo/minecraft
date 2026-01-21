@@ -9,10 +9,12 @@ using namespace std;
 int main() {
 	// scene infos
 	cube* h_scene = new cube[MAX_OBJ]; size_t h_sceneSize = 0; // scene size calculated step by step 
-	light h_lights[1] = {light{{0,1,0},{1,1,1}}}; int h_lightsSize = 1;
+	light h_lights[1] = {light{{0,1,0},{0.5,0.5,0.5}}}; int h_lightsSize = 1;
 
 	COLOR_TEXTURE(white_texture,(vec3{1,1,1}));
 	COLOR_TEXTURE(blue_texture,(vec3{0,0,1}));
+
+	IMPORT_TEXTURE(dirt,"..\\textures\\dirt.tex",vec2(0,0),vec2(1,1),16,16);
 
 	DEFAULT_NORMAL_MAP(default_norm_map);
 	
@@ -20,8 +22,10 @@ int main() {
 
 	Camera.init("Minecraft");
 	Camera.origin = vec3{0,0,0};
+	Camera.max_reflections = 3;
 
-	cube({0,0,0},{1,1,1},h_scene,h_sceneSize,material(diffuse),white_texture,default_norm_map);
+	cube({0,0,0},{1,1,1},h_scene,h_sceneSize,material(diffuse),dirt,default_norm_map);
+	cube({1,1,0},{2,2,1},h_scene,h_sceneSize,material(diffuse),dirt,default_norm_map);
 
 	int numKeys;
 	const Uint8* keystates=SDL_GetKeyboardState(&numKeys);
