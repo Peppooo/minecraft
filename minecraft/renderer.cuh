@@ -40,7 +40,7 @@ __device__ __forceinline__ vec3 compute_ray(const Scene* scene,vec3 O,vec3 D) {
 	}
 	else {
 		float kY = (D.norm().y + 1) / 2;
-		return vec3{191,245,255}*kY + vec3{0, 110, 255}*(1 - kY);
+		return vec3{191,245,255}*kY + vec3{0, 110, 255}*(1 - kY); // sky box
 	}
 	return color;
 }
