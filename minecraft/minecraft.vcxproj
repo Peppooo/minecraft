@@ -82,9 +82,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algebra.cuh" />
+    <ClInclude Include="bvh.cuh" />
+    <ClInclude Include="engine.cuh" />
+    <ClInclude Include="light.cuh" />
     <ClInclude Include="material.cuh" />
+    <ClInclude Include="normal.cuh" />
     <ClInclude Include="objects.cuh" />
-    <ClInclude Include="physics.cuh" />
     <ClInclude Include="renderer.cuh" />
     <ClInclude Include="scene.cuh" />
     <ClInclude Include="settings.cuh" />

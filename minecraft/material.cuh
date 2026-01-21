@@ -17,9 +17,10 @@ __device__ vec3 randomVecInHemisphere(const vec3& n,curandStatePhilox4_32_10_t* 
 class material {
 public:
 	material_type type;
-	float shininess;
+	float roughness;
+	float emission;
 	material() {};
-	material(material_type Type,float Shininess = 0): type(Type),shininess(Shininess) {};
+	material(material_type Type,float Roughness = 0,float Emission = 0): type(Type),emission(Emission),roughness(Roughness) {};
 	__device__ bool needs_sampling() const {
 		return type == glossy;
 	}
@@ -28,28 +29,63 @@ public:
 			return D-n*2*dot(D,n);
 		}
 		else if(type == glossy) {
-			if(dot(D,n) > 0) n = -n;
-			vec3 specular = (D - n * 2 * dot(D,n)).norm();
-			
-			vec3 lat1 = any_perpendicular(specular); // computes the two perpendiculars to specular 
-			vec3 lat2 = cross(specular,lat1);
+			// Perfect reflection
+			vec3 r = (D - n * 2.0f * dot(D,n)).norm();
 
-			lat1 = (lat1 * shininess + specular * (1 - shininess)).norm();
-			lat2 = (lat2 * shininess + specular * (1 - shininess)).norm();
+			// Convert roughness -> exponent
+			float exp = max(0.001f,2.0f / (roughness * roughness) - 2.0f);
 
-			vec3 lat3 = ((-lat1) * shininess + specular * (1 - shininess)).norm();
-			vec3 lat4 = ((-lat2) * shininess + specular * (1 - shininess)).norm();
+			// Importance sample Phong lobe
+			float u1 = curand_uniform(state);
+			float u2 = curand_uniform(state);
 
-			recompute:
-			float weights[4];
-			randomList(weights,4,state);
-			float _sum = sum(weights,4);
-			
-			vec3 result = ((lat1 * weights[0]+lat2*weights[1]+lat3*weights[2]+lat4*weights[3]) / _sum);
-			if(dot(result,n) < 0) {
-				goto recompute;
-			}
-			return result;
+			float cosTheta = powf(u1,1.0f / (exp + 1.0f));
+			float sinTheta = sqrtf(1.0f - cosTheta * cosTheta);
+			float phi = 2.0f * M_PI * u2;
+
+			vec3 t = any_perpendicular(r);
+			vec3 b = cross(r,t);
+
+			vec3 wi =
+				t * (cosf(phi) * sinTheta) +
+				b * (sinf(phi) * sinTheta) +
+				r * cosTheta;
+
+			return wi.norm();
 		}
+		else if(type==diffuse) {
+			float r1 = curand_uniform(state);
+			float r2 = curand_uniform(state);
+
+			float phi = 2.0f * M_PI * r1;
+			float r = sqrt(r2);
+
+			float x = r * cos(phi);
+			float y = r * sin(phi);
+			float z = sqrt(1.0f - r2);
+
+			vec3 t = any_perpendicular(n);
+			vec3 b = cross(t,n);
+			
+			return (t*x + b*y + n*z);
+		}
+		return vec3{0,0,0};
+	}
+	__device__ __forceinline__ vec3 brdf(const vec3& wo,const vec3& n,vec3& wi,const vec3& albedo,float& pdf,bool& delta,curandStatePhilox4_32_10_t* state) const {
+		wi = bounce(wo,n,state);
+		if(type == specular) {
+			delta = true;
+			pdf = 1;
+			return albedo;
+		}
+		if(type == diffuse) {
+			delta = false;
+			pdf = dot(n,wi) / M_PI;
+			return albedo/M_PI;
+		}
+
+		pdf = 0.0f;
+		delta = false;
+		return vec3{0,0,0};
 	}
 };

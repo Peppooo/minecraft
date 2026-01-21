@@ -1,94 +1,61 @@
 #pragma once
 #include "objects.cuh"
 
-#define MAX_OBJ 50000
+#define MAX_OBJ 1000000
 
-class Scene {
-public:
-	vec3 a[MAX_OBJ];
-	vec3 b[MAX_OBJ];
-	vec3 c[MAX_OBJ];
-	texture* tex[MAX_OBJ];
+struct Scene {
+private:
 	vec3 t_normal[MAX_OBJ];
+public:
+	vec3 _min[MAX_OBJ];
+	vec3 _max[MAX_OBJ];
+	texture* tex[MAX_OBJ];
+	normal* norm[MAX_OBJ];
 	material mat[MAX_OBJ];
-	bool sphere[MAX_OBJ],use_tex[MAX_OBJ];
-	int sceneSize;
-	void addObject(const object& obj) {
-		a[sceneSize] = obj.a;
-		b[sceneSize] = obj.b;
-		c[sceneSize] = obj.c;
+	size_t sceneSize;
+	void addObject(const cube& obj) {
+		_min[sceneSize] = obj._min;
+		_max[sceneSize] = obj._max;
 		tex[sceneSize] = obj.tex;
-		t_normal[sceneSize] = obj.t_normal;
 		mat[sceneSize] = obj.mat;
-		sphere[sceneSize] = obj.sphere;
+		norm[sceneSize] = obj.norm;
 		sceneSize++;
 	}
-	__device__ __forceinline__ vec3 color(const int& idx,const vec3& p,const vec3& N) const {
-		vec3 Y_vec = any_perpendicular(N);
-		vec3 X_vec = cross(Y_vec,N);
-		float X = fabs(dot(X_vec,p));
-		float Y = fabs(dot(Y_vec,p));
-		float TEMP;
-		X = modff(X,&TEMP);
-		Y = modff(Y,&TEMP);
-		return tex[idx]->at(X,Y);
+	__device__ __forceinline__ vec3 color(const int idx,const vec3& p) const {
+		return tex[idx]->at(p,t_normal[idx]);
 	};
-	__host__ __device__ __forceinline__ bool intersect(const int& idx,const vec3& O,const vec3& D,vec3& p,vec3& N) const {
-		if(!sphere[idx])
-		{
-			vec3 v0 = c[idx] - a[idx];
-			vec3 v1 = b[idx] - a[idx];
-			N = t_normal[idx];
-			if(dot(N,D) > 0) N = -N;
-			vec3 pvec = cross(D,v0);
-			float det = dot(v1,pvec);
+	__device__ __forceinline__ bool intersect(const int idx,const vec3& O,const vec3& D,vec3& p,vec3& N,double* dist = nullptr) const
+	{
+		vec3 invDir = 1 / D;
+		vec3 tMin = (_min[idx] - O) * invDir;
+		vec3 tMax = (_max[idx] - O) * invDir;
+		vec3 t1 = v_min(tMin,tMax);
+		vec3 t2 = v_max(tMin,tMax);
+		float dstFar = min(min(t2.x,t2.y),t2.z);
+		float dstNear = max(max(t1.x,t1.y),t1.z);
+		if(dstFar >= dstNear && dstFar > 0) {
+			if(dist) {
+				*dist = dstNear;
+			}
 
-			// Backface culling? If you want both sides, use abs(det)
-			if(fabs(det) < epsilon) return false;
+			p = O + D * dstNear;
 
-			float invDet = 1.0 / det;
+			vec3 dir_sph = p - ((_min[idx] + _max[idx]) * 0.5f);
 
-			vec3 tvec = O - a[idx];
-			float u = dot(tvec,pvec) * invDet;
-			if(u < 0.0 || u > 1.0) return false;
+			int comp_idx = max_idx(abs(dir_sph));
 
-			vec3 qvec = cross(tvec,v1);
-			float v = dot(D,qvec) * invDet;
-			if(v < 0.0 || u + v > 1.0) return false;
+			vec3 new_N = {0,0,0};
 
-			float t = dot(v0,qvec) * invDet;
-			if(t < 0.0) return false;
+			if(dir_sph[comp_idx]<0)
+			{
+				new_N[comp_idx] = -1;
+			}
+			else new_N[comp_idx] = 1;
 
-			// Output hit point
-			vec3 hit = O + D * t;
-
-			// OUTPUTS
-			p = hit + N * epsilon;
-
+			p = p + (new_N * 1e-5);
+			N = new_N;
 			return true;
-		}
-		vec3 oc = O - a[idx];
-		float A = dot(D,D);
-		float halfB = dot(D,oc);
-		float C = dot(oc,oc) - b[idx].x * b[idx].x;
-
-		float delta = halfB * halfB - A * C;
-		if(delta < 0.0) return false;
-
-		float sqD = sqrtf(delta);
-
-		float t1 = (-halfB - sqD) / A;
-		float t = (t1 >= 0.0) ? t1 : (-halfB + sqD) / A;
-		if(t < 0.0) return false;
-
-		vec3 hit = O + D * t;
-		N = (hit - a[idx]).norm();
-
-		if(dot(N,D) > 0) return false; // if inside no intersection
-
-		p = hit + N * epsilon;
-
-		return true;
-	}
+		};
+		return false;
+	};
 };
-
