@@ -55,12 +55,14 @@ public:
 	~texture() {
 		cudaFree(matrix);
 	}
-	__device__ vec3 at(const vec3& p,const vec3& N) const {
+	__device__ vec3 at(const vec3& p,vec3 N) const {
 		if(!_texture) {
 			return color;
 		}
+		//printf("NORMAL DIR: %f %f %f\n",N.x,N.y,N.z);
 		vec3 Y_vec = any_perpendicular(N);
 		vec3 X_vec = cross(Y_vec,N);
+		if(N.z < -0.1 || N.x > 0.1) Y_vec = -Y_vec;
 		float __t;
 		float x = modff(init.x+unit.x * fabs(1000+dot(X_vec,p)),&__t);
 		float y = modff(init.y+unit.y * fabs(1000+dot(Y_vec,p)),&__t);

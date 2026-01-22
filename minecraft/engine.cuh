@@ -27,7 +27,6 @@ private:
 	SDL_Window* sdl_window;
 	SDL_Renderer* sdl_renderer;
 	SDL_Texture* frame_texture;
-	bvh tree;
 	chrono::time_point<chrono::steady_clock> lastTime;
 	vec3* acc_framebuffer;
 	uint32_t* framebuffer;
@@ -51,11 +50,17 @@ public:
 	int max_reflections,ssaa,indirect_rays,n_samples_pixel;
 	float frame_dt; int frame_n;
 	size_t lightsSize;
+	Scene* host_soa_scene = nullptr;
+
+	bvh tree;
+
+	vec3 direction;
 
 	// device
 
 	Scene* scene;
 	light* lights;
+
 
 	__host__ renderer(const int W,const int H,const float Fov = M_PI_2,const int samples_per_pixel = 1,const int Max_reflections = 4,const int Ssaa = 1,const int Indirect_rays=32): // rotation = {yaw,pitch}, Fov is in radians
 		yaw(0),pitch(0),origin({0,0,0}),frame_n(0),frame_dt(0),w(W),h(H),fov(Fov),max_reflections(Max_reflections),ssaa(Ssaa),n_samples_pixel(samples_per_pixel),indirect_rays(Indirect_rays) {
@@ -87,6 +92,8 @@ public:
 		float focal_length = w / (2 * tanf(fov / 2));
 
 		matrix rot = rotation(0,pitch,yaw);
+
+		direction = rot.z;
 
 
 		dim3 block(8,8);
@@ -141,7 +148,9 @@ public:
 		}
 		cout << "leaf nodes primitives count: " << counter << "/" << h_scene_soa->sceneSize << endl;
 		CUDA_CHECK(cudaMemcpy(scene,h_scene_soa,sizeof(Scene),cudaMemcpyHostToDevice));
-		delete h_scene_soa;
+		if(host_soa_scene) delete[] host_soa_scene;
+		host_soa_scene = h_scene_soa;
+		
 	}
 	void import_lights_from_host(const light* h_lights,const int h_lightsSize) {
 		cudaMemcpy(lights,h_lights,sizeof(light)*h_lightsSize,cudaMemcpyHostToDevice);

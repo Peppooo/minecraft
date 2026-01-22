@@ -19,10 +19,10 @@ public:
 		norm[sceneSize] = obj.norm;
 		sceneSize++;
 	}
-	__device__ __forceinline__ vec3 color(const int idx,const vec3& p,vec3& N) const {
+	__device__ __forceinline__ vec3 color(const int idx,const vec3& p,vec3 N) const {
 		return tex[idx]->at(p,N);
 	};
-	__device__ __forceinline__ bool intersect(const int idx,const vec3& O,const vec3& D,vec3& p,vec3& N,double* dist = nullptr) const
+	__host__ __device__ __forceinline__ bool intersect(const int idx,const vec3& O,const vec3& D,vec3& p,vec3& N,double* dist = nullptr) const
 	{
 		vec3 invDir = 1 / D;
 		vec3 tMin = (_min[idx] - O) * invDir;
@@ -38,20 +38,17 @@ public:
 
 			p = O + D * dstNear;
 
-			vec3 dir_sph = p - ((_min[idx] + _max[idx]) * 0.5f);
+			vec3 center = (_min[idx] + _max[idx]) * 0.5f;
 
-			int comp_idx = max_idx(abs(dir_sph));
+			vec3 dir = p - center;
 
-			vec3 new_N = {0,0,0};
+			int axis = max_idx(abs(dir));
 
-			if(dir_sph[comp_idx]<0)
-			{
-				new_N[comp_idx] = -1;
-			}
-			else new_N[comp_idx] = 1;
+			N = {0,0,0};
+			N[axis] = (dir[axis] < 0.0f) ? -1.0f : 1.0f;
 
-			p = p + (new_N * 1e-5);
-			N = new_N;
+
+			p = p + (N * 1e-5);
 			return true;
 		};
 		return false;

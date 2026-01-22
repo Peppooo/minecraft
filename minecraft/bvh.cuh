@@ -25,7 +25,7 @@ public:
 		startIndex = startIdx;
 		cubesCount = 0;
 	}
-	__device__ bool intersect(const vec3& O,const vec3& D,float& dist) const
+	__host__ __device__ bool intersect(const vec3& O,const vec3& D,float& dist) const
 	{
 		vec3 invDir = 1 / D;
 		vec3 tMin = (Min - O) * invDir;
@@ -159,23 +159,22 @@ void buildChildren(cube* scene,
 		cudaMemcpy(dev_nodes,nodes,sizeof(node) * nodesCount,cudaMemcpyHostToDevice);
 		cout << "done" << endl;
 	}
-	__device__ int castRay(const Scene* scene,const vec3& o,const vec3& d,vec3& p,vec3& n,int* debug=nullptr) const {
+	__host__ __device__ int castRay(const Scene* scene,const vec3& o,const vec3& d,vec3& p,vec3& n,bool host_call=false) const {
+		node* _nodes = host_call ? nodes : dev_nodes;
 		int stack[64]; int stackSize = 0;
 		stack[stackSize++] = 0;
 		float min_dist = INFINITY;
 		float current_dist = INFINITY;
 		int hitIdx = -1;
-		if(debug) *debug = 0;
 		// start from root
 		while(stackSize > 0) {
 			stackSize--;
-			const node current_node = dev_nodes[stack[stackSize]];
+			const node current_node = _nodes[stack[stackSize]];
 			// if leaf node, add indecies
 			if(current_node.leftChild == 0 && current_node.rightChild == 0) {
 				// iterate triangles
 				for(int i = 0; i < current_node.bounds.cubesCount; i++) {
 					vec3 _p,_n;
-					if(debug) (*debug)++;
 					if(scene->intersect(i + current_node.bounds.startIndex,o,d,_p,_n)) {
 						current_dist = (_p - o).len2();
 						if(current_dist < min_dist) {
@@ -189,8 +188,8 @@ void buildChildren(cube* scene,
 			else {
 				// push children to stack
 				float distLeft,distRight;
-				bool hitLeft = dev_nodes[current_node.leftChild].bounds.intersect(o,d,distLeft);
-				bool hitRight = dev_nodes[current_node.rightChild].bounds.intersect(o,d,distRight);
+				bool hitLeft = _nodes[current_node.leftChild].bounds.intersect(o,d,distLeft);
+				bool hitRight = _nodes[current_node.rightChild].bounds.intersect(o,d,distRight);
 				distLeft = distLeft * distLeft;
 				distRight = distRight * distRight;
 

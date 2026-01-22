@@ -24,7 +24,7 @@ __device__ __forceinline__ vec3 direct_light(const light* lights,const size_t& l
 
 __device__ __forceinline__ vec3 skyBoxColor(const vec3& D) {
 	float kY = (D.norm().y + 1) / 2;
-	return vec3{1,1,1}*kY + vec3{0, 110 / 255.0f, 1}*(1 - kY);
+	return vec3{191 / 255.0f,245 / 255.0f,1}*kY + vec3{0, 110 / 255.0f, 1}*(1 - kY);
 }
 
 __device__ __forceinline__ vec3 compute_ray(const light* lights,const size_t& lightsSize,const Scene* scene,const bvh& tree,vec3 O,vec3 D,curandStatePhilox4_32_10_t* state,int reflections = 2,int rlRays = 64) {

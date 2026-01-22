@@ -84,6 +84,7 @@
     <ClInclude Include="algebra.cuh" />
     <ClInclude Include="bvh.cuh" />
     <ClInclude Include="engine.cuh" />
+    <ClInclude Include="game.cuh" />
     <ClInclude Include="light.cuh" />
     <ClInclude Include="material.cuh" />
     <ClInclude Include="normal.cuh" />
