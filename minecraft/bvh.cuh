@@ -42,8 +42,8 @@ public:
 		Min = v_min(v,Min);
 	}
 	void grow_to_include(const cube& t) {
-		grow_to_include_point(t._min);
 		grow_to_include_point(t._max);
+		grow_to_include_point(t._min);
 	}
 };
 
@@ -60,15 +60,15 @@ public:
 
 class bvh {
 private:
-	node* dev_nodes;
+	node* dev_nodes = nullptr;
 public:
 	node* nodes = new node[max_nodes];
 	int nodesCount=0;
-void buildChildren(cube* scene,
-	int sceneSize,
-	int idx,
-	int currentDepth,
-	int maxDepth)
+	void buildChildren(cube* scene,
+		int sceneSize,
+		int idx,
+		int currentDepth,
+		int maxDepth)
 	{
 		const box& parentBounds = nodes[idx].bounds;
 		const int start = parentBounds.startIndex;
@@ -79,30 +79,63 @@ void buildChildren(cube* scene,
 
 		vec3 extent = parentBounds.Max - parentBounds.Min;
 
-		int ax = max_idx(extent);
-		float splitPos = extent[ax];
+		float bestCost = INFINITY;
+		int   bestAxis = -1;
+		float bestSplitPos = 0.0f;
 
-		box leftBox,rightBox;
-		leftBox.reset();
-		rightBox.reset();
+		box bestLeftBounds,bestRightBounds;
+		int bestLeftCount = 0,bestRightCount = 0;
 
-		int leftCount = 0;
-		int rightCount = 0;
+		for(int ax = 0; ax < 3; ax++) {
+			if(extent[ax] <= 0.0f)
+				continue;
 
-		for(int i = 0; i < count; i++) {
-			int objIdx = start + i;
-			float c = scene[objIdx].center()[ax];
+			for(int b = 1; b < 5; b++) {
+				float t = b / 5.0f;
+				float splitPos = parentBounds.Min.axis(ax) + extent[ax] * t;
 
-			if(c < splitPos) {
-				leftBox.grow_to_include(scene[objIdx]);
-				leftCount++;
-			}
-			else {
-				rightBox.grow_to_include(scene[objIdx]);
-				rightCount++;
+				box leftBox,rightBox;
+				leftBox.reset();
+				rightBox.reset();
+
+				int leftCount = 0;
+				int rightCount = 0;
+
+				for(int i = 0; i < count; i++) {
+					int objIdx = start + i;
+					float c = scene[objIdx].center()[ax];
+
+					if(c < splitPos) {
+						leftBox.grow_to_include(scene[objIdx]);
+						leftCount++;
+					}
+					else {
+						rightBox.grow_to_include(scene[objIdx]);
+						rightCount++;
+					}
+				}
+
+				if(leftCount == 0 || rightCount == 0)
+					continue;
+
+				float cost =
+					leftBox.surf_area() * leftCount +
+					rightBox.surf_area() * rightCount;
+
+				if(cost < bestCost) {
+					bestCost = cost;
+					bestAxis = ax;
+					bestSplitPos = splitPos;
+					bestLeftBounds = leftBox;
+					bestRightBounds = rightBox;
+					bestLeftCount = leftCount;
+					bestRightCount = rightCount;
+				}
 			}
 		}
 
+		if(bestAxis == -1)
+			return;
 
 		int leftChild = nodesCount++;
 		int rightChild = nodesCount++;
@@ -114,7 +147,7 @@ void buildChildren(cube* scene,
 		int j = start + count - 1;
 
 		while(i <= j) {
-			if(scene[i].center()[ax] < splitPos) {
+			if(scene[i].center()[bestAxis] < bestSplitPos) {
 				i++;
 			}
 			else {
@@ -123,13 +156,18 @@ void buildChildren(cube* scene,
 			}
 		}
 
-		nodes[leftChild].bounds = leftBox;
+		nodes[leftChild].bounds = bestLeftBounds;
 		nodes[leftChild].bounds.startIndex = start;
-		nodes[leftChild].bounds.cubesCount = leftCount;
+		nodes[leftChild].bounds.cubesCount = bestLeftCount;
 
-		nodes[rightChild].bounds = rightBox;
-		nodes[rightChild].bounds.startIndex = start + leftCount;
-		nodes[rightChild].bounds.cubesCount = rightCount;;
+		nodes[rightChild].bounds = bestRightBounds;
+		nodes[rightChild].bounds.startIndex = start + bestLeftCount;
+		nodes[rightChild].bounds.cubesCount = bestRightCount;
+
+		nodes[leftChild].leftChild = 0;
+		nodes[leftChild].rightChild = 0;
+		nodes[rightChild].leftChild = 0;
+		nodes[rightChild].rightChild = 0;
 
 		// === Recurse ===
 		if(nodesCount < max_nodes - 2) {
@@ -145,19 +183,18 @@ void buildChildren(cube* scene,
 	void build(const int max_depth,cube* scene,const int sceneSize) {
 		nodesCount = 0;
 		int root = nodesCount++;
-		nodes[root].bounds.Min = vec3::Zero;
-		nodes[root].bounds.Max = vec3::Zero;
-		nodes[root].bounds.cubesCount = 0;
-		nodes[root].bounds.startIndex = 0;
+		nodes[root].bounds.reset();
 		for(int i = 0; i < sceneSize; i++) {
 			nodes[root].bounds.grow_to_include(scene[i]);
 			nodes[root].bounds.cubesCount++;
 		}
 		cout << "building bvh structure... ";
 		buildChildren(scene,sceneSize,root,0,max_depth);
+		if(dev_nodes) cudaFree(dev_nodes);
 		cudaMalloc(&dev_nodes,sizeof(node) * nodesCount);
 		cudaMemcpy(dev_nodes,nodes,sizeof(node) * nodesCount,cudaMemcpyHostToDevice);
 		cout << "done" << endl;
+		//printNodes();
 	}
 	__host__ __device__ int castRay(const Scene* scene,const vec3& o,const vec3& d,vec3& p,vec3& n,bool host_call=false) const {
 		node* _nodes = host_call ? nodes : dev_nodes;
@@ -251,9 +288,7 @@ void buildChildren(cube* scene,
 	{
 
 		for(int i = 0; i < nodesCount; i++) {
-			if(nodes[i].leftChild == 0 && nodes[i].rightChild == 0) {
-				cout << "Length: " << nodes[i].bounds.cubesCount << " , childA,B: " << nodes[i].leftChild << " , " << nodes[i].rightChild << endl;
-			}
+			cout << "Length: " << nodes[i].bounds.cubesCount << " , childA,B: " << nodes[i].leftChild << " , " << nodes[i].rightChild << endl;
 		}
 	}
 };

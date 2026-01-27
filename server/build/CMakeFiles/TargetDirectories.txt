@@ -1,0 +1,3 @@
+C:/Users/pietr/Desktop/networking-enet/build/CMakeFiles/server.dir
+C:/Users/pietr/Desktop/networking-enet/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/pietr/Desktop/networking-enet/build/CMakeFiles/ZERO_CHECK.dir

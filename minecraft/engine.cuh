@@ -24,8 +24,6 @@ private:
 	// limits
 	const int MAX_LIGHTS = 32;
 	//host
-	SDL_Window* sdl_window;
-	SDL_Renderer* sdl_renderer;
 	SDL_Texture* frame_texture;
 	chrono::time_point<chrono::steady_clock> lastTime;
 	vec3* acc_framebuffer;
@@ -51,10 +49,11 @@ public:
 	float frame_dt; int frame_n;
 	size_t lightsSize;
 	Scene* host_soa_scene = nullptr;
-
 	bvh tree;
-
 	vec3 direction;
+
+	SDL_Window* sdl_window;
+	SDL_Renderer* sdl_renderer;
 
 	// device
 
@@ -104,7 +103,7 @@ public:
 			acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,0);
 		}
 
-		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_acc_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,time(0)*frame_n);
+		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_acc_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,(unsigned long long)10000*frame_n);
 		frames_accumulated++;
 
 		CUDA_CHECK(cudaGetLastError());
@@ -124,7 +123,7 @@ public:
 		SDL_UnlockTexture(frame_texture);
 		SDL_RenderClear(sdl_renderer);
 		SDL_RenderCopy(sdl_renderer,frame_texture,nullptr,nullptr);
-		SDL_RenderPresent(sdl_renderer);
+		//SDL_RenderPresent(sdl_renderer);
 		frame_n++;
 		lastOrigin = origin;
 		lastPitch = pitch,lastYaw = yaw;
@@ -140,13 +139,13 @@ public:
 		for(int i = 0; i < h_sceneSize; i++) {
 			h_scene_soa->addObject(h_scene[i]);
 		}
-		int counter = 0;
+		/*int counter = 0;
 		for(int i = 0; i < tree.nodesCount; i++) {
 			if(tree.nodes[i].leftChild == 0 && tree.nodes[i].rightChild == 0) {
 				counter += tree.nodes[i].bounds.cubesCount;
 			}
 		}
-		cout << "leaf nodes primitives count: " << counter << "/" << h_scene_soa->sceneSize << endl;
+		cout << "leaf nodes primitives count: " << counter << "/" << h_scene_soa->sceneSize << endl;*/
 		CUDA_CHECK(cudaMemcpy(scene,h_scene_soa,sizeof(Scene),cudaMemcpyHostToDevice));
 		if(host_soa_scene) delete[] host_soa_scene;
 		host_soa_scene = h_scene_soa;
