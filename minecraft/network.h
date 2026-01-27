@@ -3,6 +3,15 @@
 #include <thread>
 #include "game.cuh"
 
+struct PB_packet { // place block ch 0
+	int32_t x,y,z; // 
+	uint8_t block_type;
+};
+
+struct DB_packet { // destroy block ch 1
+	int32_t x,y,z;
+};
+
 class Client {
 public:
 	// networking
@@ -30,7 +39,7 @@ public:
 		client = enet_host_create(nullptr,1,2,0,0); // peerCount,channels,
 		if(!client) perror("cannot create enet host\n");
 		ENetAddress addr;
-		enet_address_set_host(&addr,ENET_HOST_ANY);
+		enet_address_set_host(&addr,"92.4.166.112");
 		addr.port = port;
 		peer = enet_host_connect(client,&addr,2,0);
 		if(!peer) perror("cannot connect with server\n");
@@ -42,14 +51,14 @@ public:
 		((int32_t*)data)[2] = int32_t(p.z);
 		data[12] = (uint8_t)block;
 		auto pack = enet_packet_create(data,sizeof(int32_t) * 3 + 1,ENET_PACKET_FLAG_RELIABLE);
-		enet_peer_send(peer,0,pack);
+		enet_peer_send(peer,1,pack);
 	}
 	void event_handler() {
 		bool placed_blocks = false;
 		while(running_handle) {
-
-
-			while(enet_host_service(client,&net_event,50) > 0) {
+		
+		
+			while(enet_host_service(client,&net_event,10) > 0) {
 				if(net_event.type == ENET_EVENT_TYPE_CONNECT) printf("connected to server.\n");
 				if(net_event.type == ENET_EVENT_TYPE_DISCONNECT) {
 					printf("disconnected from the server.\n");
@@ -57,22 +66,27 @@ public:
 				};
 
 				if(net_event.type == ENET_EVENT_TYPE_RECEIVE) {
-					int* data = (int*)net_event.packet->data;
-					if(net_event.packet->dataLength != (sizeof(int) * 3 + 1)) { // 3 4 byte integers for block position + 1 byte block type
-						printf("invalid data from the server\n");
+					if(net_event.channelID == 0) {
+						int* data = (int*)net_event.packet->data;
+						if(net_event.packet->dataLength != (sizeof(int) * 3 + 1)) { // 3 4 byte integers for block position + 1 byte block type
+							printf("invalid data from the server\n");
+						}
+						else {
+							placed_blocks = true;
+							printf("recived valid new block placing from server.\n");
+							place_block(vec3{(float)data[0],(float)data[1],(float)data[2]},
+								(blocks)net_event.packet->data[12],scene,*sceneSize);
+						}
 					}
-					else {
-						placed_blocks = true;
-						printf("recived valid new block placing from server.\n");
-						place_block(vec3{(float)data[0],(float)data[1],(float)data[2]},
-							(blocks)net_event.packet->data[12],scene,*sceneSize);
+					else if(net_event.channelID == 1) {
+						
 					}
 				}
 			}
-			if(placed_blocks) {
+			/*if(placed_blocks) {
 				ren->import_scene_from_host_array(scene,*sceneSize,32);
 				placed_blocks = false;
-			}
+			}*/
 		}
 	}
 	void start() {

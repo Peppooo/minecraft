@@ -36,7 +36,7 @@ private:
 	uint32_t* d_framebuffer;
 
 	float lastYaw,lastPitch;
-	vec3 lastOrigin; bool import_lights = false;
+	vec3 lastOrigin; bool changed_scene = false;
 
 public:
 	// host
@@ -98,7 +98,7 @@ public:
 		dim3 block(8,8);
 		dim3 grid((w + block.x - 1) / block.x,(h + block.y - 1) / block.y);
 
-		if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || import_lights) {
+		if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || changed_scene) {
 			frames_accumulated = 0;
 			acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,0);
 		}
@@ -127,10 +127,11 @@ public:
 		frame_n++;
 		lastOrigin = origin;
 		lastPitch = pitch,lastYaw = yaw;
-		import_lights = false;
+		changed_scene = false;
 	}
-	void import_scene_from_host(const Scene* h_scene) const {
+	void import_scene_from_host(const Scene* h_scene) {
 		cudaMemcpy(scene,h_scene,sizeof(Scene),cudaMemcpyHostToDevice);
+		changed_scene = true;
 	}
 	void import_scene_from_host_array(cube* h_scene,const size_t h_sceneSize,const int bvh_max_depth) {
 		tree.build(bvh_max_depth,h_scene,h_sceneSize);
@@ -149,11 +150,11 @@ public:
 		CUDA_CHECK(cudaMemcpy(scene,h_scene_soa,sizeof(Scene),cudaMemcpyHostToDevice));
 		if(host_soa_scene) delete[] host_soa_scene;
 		host_soa_scene = h_scene_soa;
-		
+		changed_scene = true;
 	}
 	void import_lights_from_host(const light* h_lights,const int h_lightsSize) {
 		cudaMemcpy(lights,h_lights,sizeof(light)*h_lightsSize,cudaMemcpyHostToDevice);
 		lightsSize = h_lightsSize;
-		import_lights = true;
+		changed_scene = true;
 	}
 };

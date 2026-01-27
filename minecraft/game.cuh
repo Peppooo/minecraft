@@ -53,7 +53,7 @@ normal* default_normal_map;
 
 void place_block(vec3 p,blocks block,cube* scene,size_t& sceneSize,material mat = material(diffuse)) {
 	if(block == quartz_block || block==obsidian_block) mat = material(specular);
-	if(block == glowstone_block) mat.emission = 10;
+	if(block == glowstone_block) mat.emission = 100;
 	cube(p,p+vec3{1,1,1},scene,sceneSize,mat,block_textures[block],default_normal_map);
 
 }

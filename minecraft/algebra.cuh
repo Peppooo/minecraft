@@ -88,10 +88,13 @@ struct vec3 {
 		float rsq = rsqrtf(x * x + y * y + z * z);
 		return *this * (rsq == 0 ? epsilon : rsq);
 	}
-	__host__ __device__ vec3 to255() const {
-		return vec3{clamp(x,0,1),clamp(y,0,1),clamp(z,0,1)}*255.0f;
+	__host__ __device__ __forceinline__ vec3 clamped() const {
+		return {clamp(x,0,1),clamp(y,0,1),clamp(z,0,1)};
 	}
-	__host__ __device__ uint32_t argb() const {
+	__host__ __device__ __forceinline__ vec3 to255() const {
+		return clamped()*255.0f;
+	}
+	__host__ __device__ __forceinline__ uint32_t argb() const {
 		vec3 t = to255();
 		return (255 << 24) | ((unsigned char)t.x << 16) | ((unsigned char)t.y << 8) | (unsigned char)t.z;
 	}
@@ -221,4 +224,10 @@ __host__ __device__ __forceinline__ int max_idx(const vec3& v) {
 
 __host__ __device__ __forceinline__ vec3 abs(const vec3& v) {
 	return {abs(v.x),abs(v.y),abs(v.z)};
+}
+
+__device__ __forceinline__ float2 rotate(const float2& v,const float theta) {
+	float _sinf = sinf(theta);
+	float _cosf = cosf(theta);
+	return float2{v.x*_cosf+v.y*_sinf,v.x*-_sinf+v.y*_cosf};
 }

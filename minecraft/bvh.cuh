@@ -90,8 +90,8 @@ public:
 			if(extent[ax] <= 0.0f)
 				continue;
 
-			for(int b = 1; b < 5; b++) {
-				float t = b / 5.0f;
+			for(int b = 1; b < 4; b++) {
+				float t = b / 4.0f;
 				float splitPos = parentBounds.Min.axis(ax) + extent[ax] * t;
 
 				box leftBox,rightBox;

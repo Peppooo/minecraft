@@ -189,6 +189,10 @@ int main() {
 			}
 		}
 
+		if(h_sceneSize != Camera.host_soa_scene->sceneSize) {
+			Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
+		}
+
 		Camera.render();
 
 		_inventory.draw(&Camera);

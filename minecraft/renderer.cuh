@@ -85,39 +85,38 @@ __global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,c
 	int idx = (x + y * w);
 	if(idx >= w * h) return;
 	curandStatePhilox4_32_10_t state;
-	curand_init(seed,((unsigned long long)w / 8) * y + x,0,&state);
+	curand_init(seed,((unsigned long long)w / 8) * y + x,x*100+y*100,&state);
 	int iC = x - w / 2;
 	int jC = -(y - h / 2);
-	vec3 ssaa_sum_sample = {0,0,0};
-	int n_samples_count = 0;
+	
+	vec3 sample = {0,0,0};
 
 	for(int aa_sample = 0; aa_sample < ssaa; aa_sample++) {
-		double2 r_aa = curand_uniform2_double(&state);
+		float2 r_aa = {curand_uniform(&state)-0.5f,curand_uniform(&state)-0.5f};
+		r_aa = rotate(r_aa,curand_uniform(&state) * M_PI * 2);
+		
 
-		float i = iC + r_aa.x - 0.5f;
-		float j = jC + r_aa.y - 0.5f;
-		n_samples_count = 0;
-		vec3 pixel = {0,0,0};
 		for(int z = 0; z < n_samples; z++) {
 			vec3 current_sample = {0,0,0};
 
-			vec3 dir = rotation * vec3{i,j,focal_length};
+			vec3 dir = (rotation * vec3{iC+r_aa.x,jC+r_aa.y,focal_length});
 			current_sample = compute_ray(lights,lightsSize,scene,tree,origin,dir,&state,reflections,reflected_rays);
+
 			for(int k = 0; k < lightsSize; k++) {
 				float lightdot = dot(dir.norm(),(lights[k].pos - origin).norm());
 				if(lightdot > (1 - 0.0001) && lightdot < (1 + 0.0001)) { // draws a sphere in the location of the light
 					current_sample = vec3{1,1,1};
 				}
 			}
-			pixel += current_sample;
-			n_samples_count++;
+
+			sample += current_sample.clamped();
 		}
 
 
-		ssaa_sum_sample += (pixel / n_samples_count);
+		//ssaa_sum_sample += (pixel / n_samples);
 	}
 
-	data[idx] += (ssaa_sum_sample / ssaa);
+	data[idx] += (sample/(n_samples*ssaa));
 }
 
 
