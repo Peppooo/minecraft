@@ -63,6 +63,7 @@ void load_textures(SDL_Renderer* sdl_ren,normal* _default_normal_map) {
 	block_textures.resize(blocks_count);
 	default_normal_map = _default_normal_map;
 	char filename[64];
+	
 	for(int i = 0; i < blocks_count; i++) {
 		snprintf(filename,64,"..\\textures\\blocks\\%d.tex",i);
 		IMPORT_TEXTURE(new_tex_p,filename,vec2(0,0),vec2(1,1),16,16);

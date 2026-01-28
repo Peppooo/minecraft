@@ -90,47 +90,44 @@ public:
 			if(extent[ax] <= 0.0f)
 				continue;
 
-			for(int b = 1; b < 4; b++) {
-				float t = b / 4.0f;
-				float splitPos = parentBounds.Min.axis(ax) + extent[ax] * t;
+			float splitPos = parentBounds.Min.axis(ax) + extent[ax] * 0.5f;
 
-				box leftBox,rightBox;
-				leftBox.reset();
-				rightBox.reset();
+			box leftBox,rightBox;
+			leftBox.reset();
+			rightBox.reset();
 
-				int leftCount = 0;
-				int rightCount = 0;
+			int leftCount = 0;
+			int rightCount = 0;
 
-				for(int i = 0; i < count; i++) {
-					int objIdx = start + i;
-					float c = scene[objIdx].center()[ax];
+			for(int i = 0; i < count; i++) {
+				int objIdx = start + i;
+				float c = scene[objIdx].center()[ax];
 
-					if(c < splitPos) {
-						leftBox.grow_to_include(scene[objIdx]);
-						leftCount++;
-					}
-					else {
-						rightBox.grow_to_include(scene[objIdx]);
-						rightCount++;
-					}
+				if(c < splitPos) {
+					leftBox.grow_to_include(scene[objIdx]);
+					leftCount++;
 				}
-
-				if(leftCount == 0 || rightCount == 0)
-					continue;
-
-				float cost =
-					leftBox.surf_area() * leftCount +
-					rightBox.surf_area() * rightCount;
-
-				if(cost < bestCost) {
-					bestCost = cost;
-					bestAxis = ax;
-					bestSplitPos = splitPos;
-					bestLeftBounds = leftBox;
-					bestRightBounds = rightBox;
-					bestLeftCount = leftCount;
-					bestRightCount = rightCount;
+				else {
+					rightBox.grow_to_include(scene[objIdx]);
+					rightCount++;
 				}
+			}
+
+			if(leftCount == 0 || rightCount == 0)
+				continue;
+
+			float cost =
+				leftBox.surf_area() * leftCount +
+				rightBox.surf_area() * rightCount;
+
+			if(cost < bestCost) {
+				bestCost = cost;
+				bestAxis = ax;
+				bestSplitPos = splitPos;
+				bestLeftBounds = leftBox;
+				bestRightBounds = rightBox;
+				bestLeftCount = leftCount;
+				bestRightCount = rightCount;
 			}
 		}
 

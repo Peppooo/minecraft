@@ -78,7 +78,7 @@ __device__ __forceinline__ vec3 compute_ray(const light* lights,const size_t& li
 
 }
 
-__global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,const Scene* scene,const bvh tree,vec3* data,vec3 origin,matrix rotation,float focal_length,int reflected_rays,int ssaa,int reflections,int n_samples,int seed) {
+__global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,const Scene* scene,const bvh tree,uint32_t* data,vec3 origin,matrix rotation,float focal_length,int reflected_rays,int ssaa,int reflections,int n_samples,int seed) {
 	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -90,11 +90,13 @@ __global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,c
 	int jC = -(y - h / 2);
 	
 	vec3 sample = {0,0,0};
+	vec3 ssaa_sample = {0,0,0};
 
 	for(int aa_sample = 0; aa_sample < ssaa; aa_sample++) {
 		float2 r_aa = {curand_uniform(&state)-0.5f,curand_uniform(&state)-0.5f};
 		r_aa = rotate(r_aa,curand_uniform(&state) * M_PI * 2);
 		
+		sample = {0,0,0};
 
 		for(int z = 0; z < n_samples; z++) {
 			vec3 current_sample = {0,0,0};
@@ -109,14 +111,14 @@ __global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,c
 				}
 			}
 
-			sample += current_sample.clamped();
+			sample += current_sample;
 		}
 
 
-		//ssaa_sum_sample += (pixel / n_samples);
+		ssaa_sample += (sample / n_samples);
 	}
 
-	data[idx] += (sample/(n_samples*ssaa));
+	data[idx] = (ssaa_sample / ssaa).argb();
 }
 
 

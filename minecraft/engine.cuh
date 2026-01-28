@@ -98,19 +98,19 @@ public:
 		dim3 block(8,8);
 		dim3 grid((w + block.x - 1) / block.x,(h + block.y - 1) / block.y);
 
-		if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || changed_scene) {
+		/*if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || changed_scene) {
 			frames_accumulated = 0;
 			acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,0);
-		}
+		}*/
 
-		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_acc_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,(unsigned long long)10000*frame_n);
-		frames_accumulated++;
+		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,(unsigned long long)10000*frame_n);
+		//frames_accumulated++;
 
 		CUDA_CHECK(cudaGetLastError());
 
 		CUDA_CHECK(cudaDeviceSynchronize());
 
-		acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,frames_accumulated);
+		//acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,frames_accumulated);
 
 
 		int _pitch;

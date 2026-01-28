@@ -2,13 +2,16 @@
 #include <enet\enet.h>
 #include <thread>
 #include "game.cuh"
+#include "renderer.cuh"
+#include <unordered_set>
 
-struct PB_packet { // place block ch 0
+struct packet0 { // place block ch 0
 	int32_t x,y,z; // 
 	uint8_t block_type;
 };
 
-struct DB_packet { // destroy block ch 1
+struct packet1 { // destroy block ch 1
+	int32_t index;
 	int32_t x,y,z;
 };
 
@@ -17,76 +20,102 @@ public:
 	// networking
 	ENetHost* client = nullptr;
 	ENetPeer* peer = nullptr;
-
 	ENetEvent net_event;
+	bool generating_world = false;
 
 	// threads
-
 	thread t_event_handle;
 	bool running_handle = true;
 
 	// scene
 	cube* scene;
 	size_t* sceneSize;
-
 	renderer* ren;
 
 	Client(uint16_t port,cube* _scene,size_t& _sceneSize,renderer* _ren):scene(_scene),ren(_ren) {
 		if(enet_initialize() != 0) {
-			perror("cannot initialize enet\n");
+			printf("cannot initialize enet\n");
 		}
 		sceneSize = &_sceneSize;
-		client = enet_host_create(nullptr,1,2,0,0); // peerCount,channels,
-		if(!client) perror("cannot create enet host\n");
+		client = enet_host_create(nullptr,1,3,0,0); // peerCount,channels,
+		if(!client) printf("cannot create enet host\n");
 		ENetAddress addr;
-		enet_address_set_host(&addr,"92.4.166.112");
+		enet_address_set_host(&addr,ENET_HOST_ANY); //
 		addr.port = port;
-		peer = enet_host_connect(client,&addr,2,0);
-		if(!peer) perror("cannot connect with server\n");
+		peer = enet_host_connect(client,&addr,3,0);
+		if(!peer) printf("cannot connect with server\n");
 	}
 	void place_block_net(const vec3& p,const blocks& block) {
-		uint8_t* data = (uint8_t*)malloc(sizeof(int)*3+1);
-		((int32_t*)data)[0] = int32_t(p.x);
-		((int32_t*)data)[1] = int32_t(p.y);
-		((int32_t*)data)[2] = int32_t(p.z);
-		data[12] = (uint8_t)block;
-		auto pack = enet_packet_create(data,sizeof(int32_t) * 3 + 1,ENET_PACKET_FLAG_RELIABLE);
-		enet_peer_send(peer,1,pack);
+		packet0 packet_data = {int32_t(p.x),int32_t(p.y),int32_t(p.z),uint8_t(block)};
+
+		auto packet = enet_packet_create(&packet_data,sizeof(packet0),ENET_PACKET_FLAG_RELIABLE);
+
+		if(enet_peer_send(peer,0,packet)) printf("Cannot send block placing packet\n");// send on channel 0
+	}
+	void destroy_block_net(const int32_t idx,const vec3& Min) {
+		packet1 packet_data = {idx,Min.x,Min.y,Min.z};
+
+		auto packet = enet_packet_create(&packet_data,sizeof(packet1),ENET_PACKET_FLAG_RELIABLE);
+
+		if(enet_peer_send(peer,1,packet)) printf("Cannot send block destroy packet\n");// send on channel 1
+
 	}
 	void event_handler() {
-		bool placed_blocks = false;
 		while(running_handle) {
-		
-		
-			while(enet_host_service(client,&net_event,10) > 0) {
-				if(net_event.type == ENET_EVENT_TYPE_CONNECT) printf("connected to server.\n");
+
+			while(enet_host_service(client,&net_event,100) > 0) {
+				if(net_event.type == ENET_EVENT_TYPE_CONNECT) {}
 				if(net_event.type == ENET_EVENT_TYPE_DISCONNECT) {
 					printf("disconnected from the server.\n");
 					running_handle = false;
 				};
 
 				if(net_event.type == ENET_EVENT_TYPE_RECEIVE) {
-					if(net_event.channelID == 0) {
-						int* data = (int*)net_event.packet->data;
-						if(net_event.packet->dataLength != (sizeof(int) * 3 + 1)) { // 3 4 byte integers for block position + 1 byte block type
+					if(net_event.channelID == 0) { // channel 0 place block
+						packet0* data = (packet0*)net_event.packet->data;
+						if(net_event.packet->dataLength != sizeof(packet0)) { // 3 4 byte integers for block position + 1 byte block type
 							printf("invalid data from the server\n");
 						}
 						else {
-							placed_blocks = true;
 							printf("recived valid new block placing from server.\n");
-							place_block(vec3{(float)data[0],(float)data[1],(float)data[2]},
-								(blocks)net_event.packet->data[12],scene,*sceneSize);
+							place_block(vec3{(float)data->x,(float)data->y,(float)data->z},(blocks)data->block_type,scene,*sceneSize);
 						}
 					}
-					else if(net_event.channelID == 1) {
-						
+					else if(net_event.channelID == 1) { // channel 1 destroy block
+						packet1* data = (packet1*)net_event.packet->data;
+						if(net_event.packet->dataLength != sizeof(packet1)) { // 3 4 byte integers for block position + 1 byte block type
+							printf("invalid data from the server\n");
+						}
+						else {
+							printf("recived valid block destroy from server.\n");
+							const vec3& m = ren->host_soa_scene->_min[data->index];
+							const vec3 target = vec3{(float)data->x,(float)data->y,(float)data->z};
+							if(!(m == target)) {
+								printf("INVALID INDEX DESTROY %f %f %f != %f %f %f\n",(float)data->x,(float)data->y,(float)data->z,m.x,m.y,m.z);
+								for(int i = 0; i < *sceneSize; i++) {
+									if(scene[i]._min == target) {
+										swap(scene[i],scene[*sceneSize - 1]);
+										(*sceneSize)--;
+									}
+								}
+							}
+							else {
+								swap(scene[data->index],scene[*sceneSize-1]);
+								(*sceneSize)--;
+							}
+						}
+					}
+					else if(net_event.channelID == 2) {
+						generating_world = true;
+						packet0* data = (packet0*)net_event.packet->data;
+						for(int i = 0; i < (net_event.packet->dataLength/sizeof(packet0)); i++) {
+							place_block({float(data[i].x),float(data[i].y),float(data[i].z)},(blocks)data[i].block_type,scene,*sceneSize);
+						}
+						generating_world = false;
 					}
 				}
 			}
-			/*if(placed_blocks) {
-				ren->import_scene_from_host_array(scene,*sceneSize,32);
-				placed_blocks = false;
-			}*/
+
 		}
 	}
 	void start() {

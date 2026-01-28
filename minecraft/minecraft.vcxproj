@@ -98,6 +98,9 @@
     <ClInclude Include="settings.cuh" />
     <ClInclude Include="texture.cuh" />
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\server\server.cpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 13.0.targets" />

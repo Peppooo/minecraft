@@ -19,13 +19,14 @@ int main() {
 	DEFAULT_NORMAL_MAP(default_norm_map);
 
 	
-	renderer Camera(1024,1024,M_PI / 1.8f,1,1,1);
+	renderer Camera(512,512,M_PI / 1.8f,1,1,1);
 
 	printf("initializing camera... ");
 	Camera.init("Minecraft"); printf("done\n");
 
 	Camera.origin = vec3{0,1.5f,0};
-	Camera.max_reflections = 4;
+	Camera.max_reflections = 2;
+	Camera.n_samples_pixel = 1;
 
 	printf("loading textures... ");
 	load_textures(Camera.sdl_renderer,default_norm_map); printf("done\n");
@@ -40,22 +41,13 @@ int main() {
 	_inventory._items[8] = quartz_item;
 	_inventory._items[7] = glowstone_block;
 
-	/*for(int i = 0; i < 64; i++) {
-		for(int j = 0; j < 64; j++) {
-			cube({(float)i,0,(float)j},{i + 1.0f,1,j+1.0f},h_scene,h_sceneSize,material(diffuse),block_textures[i%(types::blocks::count)],default_norm_map);
-		}
-	}*/
-
-	//cube({-1000,-2000,-1000},{1000,0,1000},h_scene,h_sceneSize,material(diffuse),block_textures[blocks::grass],default_norm_map);
-
 	for(int i = -64; i <= 64; i++) {
 		for(int j = -64; j <= 64; j++) {
 			place_block({float(i),-1,float(j)},grass_block,h_scene,h_sceneSize);
 		}
 	}
 
-	for(float k = 0; k < 3; k++) {
-
+	for(float k = 0; k < 4; k++) {
 		place_block({0,k,0},oak_log_block,h_scene,h_sceneSize);
 		place_block({1,k,0},brick_block,h_scene,h_sceneSize);
 
@@ -81,8 +73,6 @@ int main() {
 
 	place_block({2,2,0},brick_block,h_scene,h_sceneSize);
 	
-	cube({0,-7,0},{5,0.001,7},h_scene,h_sceneSize,material(diffuse),block_textures[cobblestone_block],default_norm_map);
-
 
 	int numKeys;
 	const Uint8* keystates=SDL_GetKeyboardState(&numKeys);
@@ -107,6 +97,10 @@ int main() {
 			cout << "frame time: " << sum_time / 50 << " ms" << endl; // average frame time out of 5
 			sum_time = 0;
 		}
+
+		while(client.generating_world) {
+			cout << "generating world..." << endl;
+		}; // stops if loading world
 
 		while(SDL_PollEvent(&e)) {
 			if(e.type == SDL_MOUSEWHEEL) {
@@ -136,20 +130,15 @@ int main() {
 					vec3 w_n,_;
 					int result_idx = Camera.tree.castRay(Camera.host_soa_scene,Camera.origin,Camera.direction,_,w_n,true);
 					if(result_idx != (-1)) {
-						//place_block(Camera.host_soa_scene->_min[result_idx] + w_n,(blocks)(_inventory._items[_inventory.selected]),h_scene,h_sceneSize);
-						
 						client.place_block_net(Camera.host_soa_scene->_min[result_idx] + w_n,(blocks)(_inventory._items[_inventory.selected])); // says to the server i placed this block
-						
-						//Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 					}
 				}
 				if(e.button.button == SDL_BUTTON_LEFT) {
 					vec3 _;
 					int result_idx = Camera.tree.castRay(Camera.host_soa_scene,Camera.origin,Camera.direction,_,_,true);
 					if(result_idx != (-1)) {
-						swap(h_scene[result_idx],h_scene[h_sceneSize - 1]);
-						h_sceneSize--;
-						Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
+						vec3 p = Camera.host_soa_scene->_min[result_idx];
+						client.destroy_block_net(result_idx,p);
 					}
 
 				}
@@ -177,7 +166,7 @@ int main() {
 			move.y += 1;
 		}
 		if(keystates[SDL_SCANCODE_LSHIFT]) {
-			curr_move_speed *= 8;
+			curr_move_speed *= 1.3;
 		}
 		if(move.len2() != 0) {
 			if(!move_light) {
@@ -189,7 +178,7 @@ int main() {
 			}
 		}
 
-		if(h_sceneSize != Camera.host_soa_scene->sceneSize) {
+		if(h_sceneSize != Camera.host_soa_scene->sceneSize && Camera.frame_n%5 == 0) {
 			Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 		}
 
