@@ -63,7 +63,7 @@ public:
 	void event_handler() {
 		while(running_handle) {
 
-			while(enet_host_service(client,&net_event,100) > 0) {
+			while(enet_host_service(client,&net_event,50) > 0) {
 				if(net_event.type == ENET_EVENT_TYPE_CONNECT) {}
 				if(net_event.type == ENET_EVENT_TYPE_DISCONNECT) {
 					printf("disconnected from the server.\n");

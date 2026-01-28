@@ -19,7 +19,7 @@ int main() {
 	DEFAULT_NORMAL_MAP(default_norm_map);
 
 	
-	renderer Camera(512,512,M_PI / 1.8f,1,1,1);
+	renderer Camera(1024,1024,M_PI / 2.0f,1,1,1);
 
 	printf("initializing camera... ");
 	Camera.init("Minecraft"); printf("done\n");
@@ -41,7 +41,7 @@ int main() {
 	_inventory._items[8] = quartz_item;
 	_inventory._items[7] = glowstone_block;
 
-	for(int i = -64; i <= 64; i++) {
+	/*for(int i = -64; i <= 64; i++) {
 		for(int j = -64; j <= 64; j++) {
 			place_block({float(i),-1,float(j)},grass_block,h_scene,h_sceneSize);
 		}
@@ -70,8 +70,9 @@ int main() {
 		}
 
 	}
-
+	
 	place_block({2,2,0},brick_block,h_scene,h_sceneSize);
+	*/
 	
 
 	int numKeys;
@@ -83,6 +84,7 @@ int main() {
 	auto lastTime = chrono::high_resolution_clock::now();
 
 	float sum_time = 0;
+	float last_frame_time;
 
 	Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 	Camera.import_lights_from_host(h_lights,h_lightsSize);
@@ -94,7 +96,8 @@ int main() {
 	
 	while(1) {
 		if(Camera.frame_n % 50 == 0) {
-			cout << "frame time: " << sum_time / 50 << " ms" << endl; // average frame time out of 5
+			last_frame_time = sum_time / 50;
+			cout << "frame time: " << last_frame_time << " ms" << endl; // average frame time out of 5
 			sum_time = 0;
 		}
 
@@ -178,7 +181,7 @@ int main() {
 			}
 		}
 
-		if(h_sceneSize != Camera.host_soa_scene->sceneSize && Camera.frame_n%5 == 0) {
+		if(h_sceneSize != Camera.host_soa_scene->sceneSize && int(Camera.frame_n*last_frame_time)%50 == 0) {
 			Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 		}
 

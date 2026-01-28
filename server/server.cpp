@@ -52,6 +52,12 @@ int _main() { // change for server compilation keep for client compilation
 
     printf("Started server...\n");
 
+    for(int i = -64; i <= 64; i++) {
+        for(int j = -64; j <= 64; j++) {
+            world.insert(packet0{i,0,j,6}); // grass block at i,0,j
+        }
+    }
+
     ENetEvent event;
 
     while(true) {
@@ -70,15 +76,12 @@ int _main() { // change for server compilation keep for client compilation
                 }
 
                 case ENET_EVENT_TYPE_RECEIVE: {
+                    bool isPacketValid = false;
                     if(event.packet->dataLength <= max(sizeof(packet0),sizeof(packet1))) {
-                        ENetPacket* packetCopy = enet_packet_create(
-                            event.packet->data,
-                            event.packet->dataLength,
-                            ENET_PACKET_FLAG_RELIABLE
-                        );
                         if(event.channelID == 0 && event.packet->dataLength == sizeof(packet0)) { // block placed
                             const packet0& packet = *((packet0*)event.packet->data);
                             if(world.find(packet) == world.end()) {
+                                isPacketValid = true;
                                 world.insert(packet);
                             }
         
@@ -86,10 +89,22 @@ int _main() { // change for server compilation keep for client compilation
                         else if(event.channelID == 1 && event.packet->dataLength == sizeof(packet1)) {
                             const packet1& packet = *((packet1*)event.packet->data);
                             packet0 real_pack = packet0{packet.x,packet.y,packet.z,0};
-                            world.erase(real_pack);
+                            if(world.find(real_pack) != world.end()) {
+                                isPacketValid = true;
+                                world.erase(real_pack);
+                            }
+                            
                         }
-                        enet_host_broadcast(server,event.channelID,packetCopy);
-                        enet_packet_destroy(event.packet);
+
+                        if(isPacketValid) {
+                            ENetPacket* packetCopy = enet_packet_create(
+                                event.packet->data,
+                                event.packet->dataLength,
+                                ENET_PACKET_FLAG_RELIABLE
+                            );
+                            enet_host_broadcast(server,event.channelID,packetCopy);
+                            enet_packet_destroy(event.packet);
+                        }
                     }
                     break;
                 }
