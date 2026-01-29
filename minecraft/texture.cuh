@@ -17,24 +17,28 @@ public:
 
 class texture {
 private:
-	int width,height;
+	uint16_t width,height;
 	rgb* matrix; // only device
 	bool _texture;
 	vec3 color;
 	vec2 unit;
-	vec2 init;
+	vec2 init; 
 public:
 	texture() {};
-	texture(const char* filename,const vec2& Init,const vec2& Unit,const int Width,const int Height):
-		_texture(true),init(Init),unit(Unit),width(Width),height(Height) 
-	{
+	texture(const char* filename,const vec2& Init,const vec2& Unit,int W,int H): _texture(true),init(Init),unit(Unit),width(W),height(H) {
 		rgb* h_matrix = new rgb[MAX_TEX_SIZE];
 		FILE* file = fopen(filename,"rb");
 
 		if(!file) {
 			cout << "Error opening file" << endl;
 		}
-		if(Width * Height > MAX_TEX_SIZE) {
+
+		// TODO: add image size in texture file
+		//if(!(fread(&width,sizeof(uint16_t),1,file) == 1 && fread(&height,sizeof(uint16_t),1,file) == 1)) {
+		//	printf("incorrect texture file format: %s",filename); return;
+		//}
+
+		if(W * H > MAX_TEX_SIZE) {
 			cout << "FILE EXCEED MAX TEXTURE SIZE" << endl;
 		}
 

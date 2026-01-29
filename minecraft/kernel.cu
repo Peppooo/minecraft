@@ -19,13 +19,13 @@ int main() {
 	DEFAULT_NORMAL_MAP(default_norm_map);
 
 	
-	renderer Camera(1024,1024,M_PI / 2.0f,1,1,1);
+	renderer Camera(512,512,512,512,M_PI / 1.4f,1,1,1);
 
 	printf("initializing camera... ");
 	Camera.init("Minecraft"); printf("done\n");
 
-	Camera.origin = vec3{0,1.5f,0};
-	Camera.max_reflections = 2;
+	Camera.origin = vec3{0,3.0f,0};
+	Camera.max_reflections = 4;
 	Camera.n_samples_pixel = 1;
 
 	printf("loading textures... ");
@@ -38,42 +38,7 @@ int main() {
 	for(int i = 0; i < 9; i++) {
 		_inventory._items[i] = (items)i;
 	}
-	_inventory._items[8] = quartz_item;
-	_inventory._items[7] = glowstone_block;
-
-	/*for(int i = -64; i <= 64; i++) {
-		for(int j = -64; j <= 64; j++) {
-			place_block({float(i),-1,float(j)},grass_block,h_scene,h_sceneSize);
-		}
-	}
-
-	for(float k = 0; k < 4; k++) {
-		place_block({0,k,0},oak_log_block,h_scene,h_sceneSize);
-		place_block({1,k,0},brick_block,h_scene,h_sceneSize);
-
-		place_block({3,k,0},brick_block,h_scene,h_sceneSize);
-		place_block({4,k,0},oak_log_block,h_scene,h_sceneSize);
-
-		for(int i = 1; i < 6; i++) {
-			for(int j = 0; j <= 5; j += 4) {
-				if(k != 1 || (i<=1 || i>=5)) {
-					place_block({float(j),k,float(i)},brick_block,h_scene,h_sceneSize);
-				}
-			}
-		}
-
-		place_block({0,k,6},oak_log_block,h_scene,h_sceneSize);
-		place_block({4,k,6},oak_log_block,h_scene,h_sceneSize);
-
-		for(float i = 1; i < 4; i++) {
-			if(k!=1 || i != 2) place_block({i,k,6},brick_block,h_scene,h_sceneSize);
-		}
-
-	}
-	
-	place_block({2,2,0},brick_block,h_scene,h_sceneSize);
-	*/
-	
+	_inventory._items[8] = glowstone_item;
 
 	int numKeys;
 	const Uint8* keystates=SDL_GetKeyboardState(&numKeys);
@@ -84,7 +49,6 @@ int main() {
 	auto lastTime = chrono::high_resolution_clock::now();
 
 	float sum_time = 0;
-	float last_frame_time;
 
 	Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 	Camera.import_lights_from_host(h_lights,h_lightsSize);
@@ -96,14 +60,14 @@ int main() {
 	
 	while(1) {
 		if(Camera.frame_n % 50 == 0) {
-			last_frame_time = sum_time / 50;
-			cout << "frame time: " << last_frame_time << " ms" << endl; // average frame time out of 5
+			cout << "frame time: " << sum_time / 50 << " ms" << endl; // average frame time out of 5
 			sum_time = 0;
 		}
 
+
 		while(client.generating_world) {
-			cout << "generating world..." << endl;
-		}; // stops if loading world
+			cout << "loading world..." << endl;
+		}; // wait while world loading
 
 		while(SDL_PollEvent(&e)) {
 			if(e.type == SDL_MOUSEWHEEL) {
@@ -119,6 +83,10 @@ int main() {
 				}
 				if(e.key.keysym.scancode == SDL_SCANCODE_H) {
 					Camera.ssaa = 16;
+				}
+				if(e.key.keysym.scancode < 40 && e.key.keysym.scancode > 29) {
+					int numKey = e.key.keysym.scancode==39?0 :(e.key.keysym.scancode - 29);
+					_inventory._items[_inventory.selected] = (items)numKey;
 				}
 			}
 			if(e.type == SDL_QUIT) {
@@ -181,7 +149,8 @@ int main() {
 			}
 		}
 
-		if(h_sceneSize != Camera.host_soa_scene->sceneSize && int(Camera.frame_n*last_frame_time)%50 == 0) {
+		if(h_sceneSize != Camera.host_soa_scene->sceneSize && client.updated_world) {
+			client.updated_world = false;
 			Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
 		}
 

@@ -78,7 +78,7 @@ __device__ __forceinline__ vec3 compute_ray(const light* lights,const size_t& li
 
 }
 
-__global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,const Scene* scene,const bvh tree,uint32_t* data,vec3 origin,matrix rotation,float focal_length,int reflected_rays,int ssaa,int reflections,int n_samples,int seed) {
+__global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,const Scene* scene,const bvh tree,vec3* data,vec3 origin,matrix rotation,float focal_length,int reflected_rays,int ssaa,int reflections,int n_samples,int seed) {
 	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -118,7 +118,7 @@ __global__ void render_pixel(int w,int h,const light* lights,size_t lightsSize,c
 		ssaa_sample += (sample / n_samples);
 	}
 
-	data[idx] = (ssaa_sample / ssaa).argb();
+	data[idx] += (ssaa_sample / ssaa);
 }
 
 

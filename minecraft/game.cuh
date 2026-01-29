@@ -16,7 +16,7 @@ enum blocks {
 	oak_planks_block,
 	oak_log_block,
 	quartz_block,
-	glow_stone_block,
+	glowstone_block,
 
 	blocks_count
 };
@@ -32,7 +32,7 @@ enum items {
 	oak_planks_item,
 	oak_log_item,
 	quartz_item,
-	glowstone_block,
+	glowstone_item,
 
 	items_count,
 	empty_item
@@ -41,6 +41,7 @@ enum items {
 enum gui_textures {
 	gui_bar,
 	gui_selected_bar,
+	gui_cursor,
 
 	gui_count
 };
@@ -53,7 +54,7 @@ normal* default_normal_map;
 
 void place_block(vec3 p,blocks block,cube* scene,size_t& sceneSize,material mat = material(diffuse)) {
 	if(block == quartz_block || block==obsidian_block) mat = material(specular);
-	if(block == glowstone_block) mat.emission = 100;
+	if(block == glowstone_block) mat.emission = 15;
 	cube(p,p+vec3{1,1,1},scene,sceneSize,mat,block_textures[block],default_normal_map);
 
 }
@@ -100,12 +101,18 @@ public:
 	}
 	void draw(renderer* ren) {
 		double block_resize_fact = 0.7;
-		int quad_size = ren->w/13;
+		int quad_size = min(ren->h,ren->w)*0.1f;
 		SDL_Rect sel_rect = {ren->w/2-(quad_size*4.5),ren->h - quad_size,quad_size,quad_size};
 
 		SDL_Rect bar_rect = {ren->w/2-(quad_size*4.5),ren->h - quad_size,quad_size*9,quad_size};
 
+		SDL_Rect cursor_rect = {ren->w/2,ren->h/2,0.85f*0.5f*quad_size,0.75f*0.5f*quad_size};
+
+		cursor_rect.x -= cursor_rect.w * 0.5f;
+		cursor_rect.y -= cursor_rect.h * 0.5f;
+
 		SDL_RenderCopy(ren->sdl_renderer,gui_textures[gui_bar],NULL,&bar_rect);
+		SDL_RenderCopy(ren->sdl_renderer,gui_textures[gui_cursor],NULL,&cursor_rect);
 
 		
 		for(int i = 0; i < 9; i++) {

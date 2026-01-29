@@ -15,7 +15,7 @@ __global__ void acc_render(int w,int h,uint32_t* return_buffer,vec3* acc_buffer,
 		acc_buffer[idx] = vec3{0,0,0};
 	}
 	else {
-		return_buffer[idx] = (acc_buffer[idx] / (float)frames_accumulated).argb();
+		return_buffer[idx] = (acc_buffer[idx] / frames_accumulated).argb();
 	}
 }
 
@@ -37,6 +37,8 @@ private:
 
 	float lastYaw,lastPitch;
 	vec3 lastOrigin; bool changed_scene = false;
+
+	int window_w,window_h;
 
 public:
 	// host
@@ -60,14 +62,16 @@ public:
 	Scene* scene;
 	light* lights;
 
+	vec2 mouse_scaling;
 
-	__host__ renderer(const int W,const int H,const float Fov = M_PI_2,const int samples_per_pixel = 1,const int Max_reflections = 4,const int Ssaa = 1,const int Indirect_rays=32): // rotation = {yaw,pitch}, Fov is in radians
-		yaw(0),pitch(0),origin({0,0,0}),frame_n(0),frame_dt(0),w(W),h(H),fov(Fov),max_reflections(Max_reflections),ssaa(Ssaa),n_samples_pixel(samples_per_pixel),indirect_rays(Indirect_rays) {
+	__host__ renderer(const int W_window,const int H_window,const int W_render,const int H_render,const float Fov = M_PI_2,const int samples_per_pixel = 1,const int Max_reflections = 4,const int Ssaa = 1,const int Indirect_rays=32): // rotation = {yaw,pitch}, Fov is in radians
+		yaw(0),pitch(0),origin({0,0,0}),frame_n(0),frame_dt(0),w(W_render),h(H_render),window_w(W_window),window_h(H_window),fov(Fov),max_reflections(Max_reflections),ssaa(Ssaa),n_samples_pixel(samples_per_pixel),indirect_rays(Indirect_rays) {
 	}
 	__host__ void init(const char* win_name) {
 		SDL_Init(SDL_INIT_EVERYTHING);
-		sdl_window = SDL_CreateWindow(win_name,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,w,h,0);
+		sdl_window = SDL_CreateWindow(win_name,SDL_WINDOWPOS_CENTERED,SDL_WINDOWPOS_CENTERED,window_w,window_h,0);
 		sdl_renderer = SDL_CreateRenderer(sdl_window,-1,SDL_RENDERER_ACCELERATED);
+		SDL_RenderSetLogicalSize(sdl_renderer,w,h);
 		frame_texture = SDL_CreateTexture(
 			sdl_renderer,
 			SDL_PIXELFORMAT_ARGB8888,
@@ -98,19 +102,19 @@ public:
 		dim3 block(8,8);
 		dim3 grid((w + block.x - 1) / block.x,(h + block.y - 1) / block.y);
 
-		/*if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || changed_scene) {
+		if(lastYaw != yaw || lastPitch != pitch || !(lastOrigin == origin) || changed_scene) {
 			frames_accumulated = 0;
 			acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,0);
-		}*/
+		}
 
-		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,(unsigned long long)10000*frame_n);
-		//frames_accumulated++;
+		render_pixel<<<grid,block>>>(w,h,lights,lightsSize,scene,tree,d_acc_framebuffer,origin,rot,focal_length,indirect_rays,ssaa,max_reflections,n_samples_pixel,(unsigned long long)10000*frame_n);
+		frames_accumulated++;
 
 		CUDA_CHECK(cudaGetLastError());
 
 		CUDA_CHECK(cudaDeviceSynchronize());
 
-		//acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,frames_accumulated);
+		acc_render << <grid,block >> > (w,h,d_framebuffer,d_acc_framebuffer,frames_accumulated);
 
 
 		int _pitch;
