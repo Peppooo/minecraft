@@ -67,7 +67,7 @@ void load_textures(SDL_Renderer* sdl_ren,normal* _default_normal_map) {
 	
 	for(int i = 0; i < blocks_count; i++) {
 		snprintf(filename,64,"..\\textures\\blocks\\%d.tex",i);
-		IMPORT_TEXTURE(new_tex_p,filename,vec2(0,0),vec2(1,1),16,16);
+		IMPORT_TEXTURE(new_tex_p,filename,vec2(0,0),vec2(1,1));
 		block_textures[i] = new_tex_p;
 	}
 	items_textures.resize(items_count);
@@ -100,35 +100,35 @@ public:
 		selected = ((90+(int)selected-dir) % 9);
 	}
 	void draw(renderer* ren) {
-		double block_resize_fact = 0.7;
-		int quad_size = min(ren->h,ren->w)*0.1f;
-		SDL_Rect sel_rect = {ren->w/2-(quad_size*4.5),ren->h - quad_size,quad_size,quad_size};
+		float block_resize_fact = 0.7f;
+		float quad_size = min(ren->h,ren->w) * 0.1f;
+		SDL_FRect sel_rect = {ren->w/2.0f-(quad_size*4.5f),ren->h - quad_size,quad_size,quad_size};
 
-		SDL_Rect bar_rect = {ren->w/2-(quad_size*4.5),ren->h - quad_size,quad_size*9,quad_size};
+		SDL_FRect bar_rect = {ren->w/2.0f-(quad_size*4.5f),ren->h - quad_size,quad_size*9.0f,quad_size};
 
-		SDL_Rect cursor_rect = {ren->w/2,ren->h/2,0.85f*0.5f*quad_size,0.75f*0.5f*quad_size};
+		SDL_FRect cursor_rect = {ren->w/2.0,ren->h/2,0.85f*0.5f*quad_size,0.75f*0.5f*quad_size};
 
 		cursor_rect.x -= cursor_rect.w * 0.5f;
 		cursor_rect.y -= cursor_rect.h * 0.5f;
 
-		SDL_RenderCopy(ren->sdl_renderer,gui_textures[gui_bar],NULL,&bar_rect);
-		SDL_RenderCopy(ren->sdl_renderer,gui_textures[gui_cursor],NULL,&cursor_rect);
+		SDL_RenderCopyF(ren->sdl_renderer,gui_textures[gui_bar],NULL,&bar_rect);
+		SDL_RenderCopyF(ren->sdl_renderer,gui_textures[gui_cursor],NULL,&cursor_rect);
 
 		
 		for(int i = 0; i < 9; i++) {
 			
 			vec2 sel_center(sel_rect.x+sel_rect.w/2,sel_rect.y+sel_rect.h/2);
 			
-			SDL_Rect block_rect = {sel_rect.x,sel_rect.y,quad_size*block_resize_fact,quad_size*block_resize_fact};
+			SDL_FRect block_rect = {sel_rect.x,sel_rect.y,quad_size*block_resize_fact,quad_size*block_resize_fact};
 
 			block_rect.x = sel_center.x-block_rect.w *0.5;
 			block_rect.y = sel_center.y-block_rect.w *0.5;
 
 			if(_items[i] != empty_item) {
-				SDL_RenderCopy(ren->sdl_renderer,items_textures[_items[i]],NULL,&block_rect);
+				SDL_RenderCopyF(ren->sdl_renderer,items_textures[_items[i]],NULL,&block_rect);
 			}
 			if(i == selected) {
-				SDL_RenderCopy(ren->sdl_renderer,gui_textures[gui_selected_bar],NULL,&sel_rect);
+				SDL_RenderCopyF(ren->sdl_renderer,gui_textures[gui_selected_bar],NULL,&sel_rect);
 			}
 			sel_rect.x += sel_rect.w;
 		}

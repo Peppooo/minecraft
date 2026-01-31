@@ -25,20 +25,21 @@ private:
 	vec2 init; 
 public:
 	texture() {};
-	texture(const char* filename,const vec2& Init,const vec2& Unit,int W,int H): _texture(true),init(Init),unit(Unit),width(W),height(H) {
+	texture(const char* filename,const vec2& Init,const vec2& Unit): _texture(true),init(Init),unit(Unit) {
 		rgb* h_matrix = new rgb[MAX_TEX_SIZE];
 		FILE* file = fopen(filename,"rb");
+		
 
 		if(!file) {
 			cout << "Error opening file" << endl;
 		}
 
 		// TODO: add image size in texture file
-		//if(!(fread(&width,sizeof(uint16_t),1,file) == 1 && fread(&height,sizeof(uint16_t),1,file) == 1)) {
-		//	printf("incorrect texture file format: %s",filename); return;
-		//}
+		if(!(fread(&width,sizeof(uint16_t),1,file) == 1 && fread(&height,sizeof(uint16_t),1,file) == 1)) {
+			printf("incorrect texture file format: %s",filename); return;
+		}
 
-		if(W * H > MAX_TEX_SIZE) {
+		if(width * height > MAX_TEX_SIZE) {
 			cout << "FILE EXCEED MAX TEXTURE SIZE" << endl;
 		}
 
@@ -49,7 +50,7 @@ public:
 			h_matrix[i] = {R,G,B};
 			i++;
 		}
-		if(i != width * height) printf("NOT ENOUGH PIXELS IN TEXTURE\n");
+		if(i != width * height) printf("NOT ENOUGH PIXELS IN TEXTURE: %d/%d\n",i,width*height);
 		fclose(file);
 		cudaMalloc(&matrix,MAX_TEX_SIZE*sizeof(rgb));
 		cudaMemcpy(matrix,h_matrix,MAX_TEX_SIZE*sizeof(rgb),cudaMemcpyHostToDevice);
@@ -78,6 +79,6 @@ public:
 	}
 };
 
-#define IMPORT_TEXTURE(name,filename,init,unit,w,h) texture* name;cudaMalloc(&name,sizeof(texture));cudaMemcpy(name,new texture(filename,init,unit,w,h),sizeof(texture),cudaMemcpyHostToDevice);
+#define IMPORT_TEXTURE(name,filename,init,unit) texture* name;cudaMalloc(&name,sizeof(texture));cudaMemcpy(name,new texture(filename,init,unit),sizeof(texture),cudaMemcpyHostToDevice);
 
 #define COLOR_TEXTURE(name,color) texture* name;cudaMalloc(&name,sizeof(texture));cudaMemcpy(name,new texture(color),sizeof(texture),cudaMemcpyHostToDevice);

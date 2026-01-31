@@ -19,13 +19,13 @@ int main() {
 	DEFAULT_NORMAL_MAP(default_norm_map);
 
 	
-	renderer Camera(512,512,512,512,M_PI / 1.4f,1,1,1);
+	renderer Camera(2560,1440,2560,1440,M_PI / 1.3f,1,1,1);
 
 	printf("initializing camera... ");
 	Camera.init("Minecraft"); printf("done\n");
 
 	Camera.origin = vec3{0,3.0f,0};
-	Camera.max_reflections = 4;
+	Camera.max_reflections = 6;
 	Camera.n_samples_pixel = 1;
 
 	printf("loading textures... ");
@@ -59,8 +59,8 @@ int main() {
 
 	
 	while(1) {
-		if(Camera.frame_n % 50 == 0) {
-			cout << "frame time: " << sum_time / 50 << " ms" << endl; // average frame time out of 5
+		if(Camera.frame_n % 5000 == 0) {
+			cout << "frame time: " << sum_time / 5000 << " ms" << endl; // average frame time out of 5
 			sum_time = 0;
 		}
 
@@ -160,7 +160,9 @@ int main() {
 
 		SDL_RenderPresent(Camera.sdl_renderer);
 
-		sum_time += Camera.frame_dt*1000;
+		if(Camera.frame_n > 1) {
+			sum_time += Camera.frame_dt * 1000;
+		}
 	}
 	client.stop();
 }
