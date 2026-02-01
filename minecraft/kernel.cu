@@ -19,13 +19,13 @@ int main() {
 	DEFAULT_NORMAL_MAP(default_norm_map);
 
 	
-	renderer Camera(2560,1440,2560,1440,M_PI / 1.3f,1,1,1);
+	renderer Camera(512,512,512,512,M_PI / 1.3f,1,1,1);
 
 	printf("initializing camera... ");
 	Camera.init("Minecraft"); printf("done\n");
 
 	Camera.origin = vec3{0,3.0f,0};
-	Camera.max_reflections = 6;
+	Camera.max_reflections = 4;
 	Camera.n_samples_pixel = 1;
 
 	printf("loading textures... ");
@@ -59,8 +59,8 @@ int main() {
 
 	
 	while(1) {
-		if(Camera.frame_n % 5000 == 0) {
-			cout << "frame time: " << sum_time / 5000 << " ms" << endl; // average frame time out of 5
+		if(Camera.frame_n % 500 == 0) {
+			cout << "frame time: " << sum_time / 500 << " ms" << endl; // average frame time out of 500
 			sum_time = 0;
 		}
 
@@ -82,7 +82,7 @@ int main() {
 					}
 				}
 				if(e.key.keysym.scancode == SDL_SCANCODE_H) {
-					Camera.ssaa = 16;
+					//Camera.ssaa = 16;
 				}
 				if(e.key.keysym.scancode < 40 && e.key.keysym.scancode > 29) {
 					int numKey = e.key.keysym.scancode==39?0 :(e.key.keysym.scancode - 29);
@@ -149,9 +149,9 @@ int main() {
 			}
 		}
 
-		if(h_sceneSize != Camera.host_soa_scene->sceneSize && client.updated_world) {
-			client.updated_world = false;
+		if(client.updated_world) {
 			Camera.import_scene_from_host_array(h_scene,h_sceneSize,32);
+			client.updated_world = false;
 		}
 
 		Camera.render();

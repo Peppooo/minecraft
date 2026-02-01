@@ -1,7 +1,7 @@
 #pragma once
 #include "objects.cuh"
 
-#define MAX_OBJ 1000000
+#define MAX_OBJ 500000
 
 struct Scene {
 public:
@@ -24,6 +24,9 @@ public:
 	};
 	__host__ __device__ __forceinline__ bool intersect(const int idx,const vec3& O,const vec3& D,vec3& p,vec3& N,double* dist = nullptr) const
 	{
+		if(v_min(O,_max[idx]) == O && v_max(O,_min[idx]) == O) return false; // exclude if coming from inside
+
+
 		vec3 invDir = 1 / D;
 		vec3 tMin = (_min[idx] - O) * invDir;
 		vec3 tMax = (_max[idx] - O) * invDir;
@@ -31,6 +34,7 @@ public:
 		vec3 t2 = v_max(tMin,tMax);
 		float dstFar = min(min(t2.x,t2.y),t2.z);
 		float dstNear = max(max(t1.x,t1.y),t1.z);
+
 		if(dstFar >= dstNear && dstFar > 0) {
 			if(dist) {
 				*dist = dstNear;
@@ -47,8 +51,10 @@ public:
 			N = {0,0,0};
 			N[axis] = (dir[axis] < 0.0f) ? -1.0f : 1.0f;
 
-
 			p = p + (N * 1e-5);
+
+			
+
 			return true;
 		};
 		return false;

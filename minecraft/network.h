@@ -41,6 +41,9 @@ public:
 
 	uint64_t tick = 0;
 
+	uint32_t players_num = 0;
+	vector<cube*> players_objects;
+
 	Client(uint16_t port,cube* _scene,size_t& _sceneSize,renderer* _ren,vec3* _player_position = nullptr):scene(_scene),ren(_ren) {
 		if(enet_initialize() != 0) {
 			printf("cannot initialize enet\n");
@@ -73,23 +76,25 @@ public:
 		auto packet = enet_packet_create(&packet_data,sizeof(packet1),ENET_PACKET_FLAG_RELIABLE);
 
 		if(enet_peer_send(peer,1,packet)) printf("Cannot send block destroy packet\n");// send on channel 1
-
 	}
 	void status_handler() {
 		tick = 0;
+		vec3 old_position = {0,0,0};
 		while(running_handle) {
 			vec3 data = *player_position;
-			auto packet = enet_packet_create(&data,sizeof(packet2),0); // unreliable packet
-			enet_peer_send(peer,2,packet);
-
+			if(!(old_position == data)) {
+				auto packet = enet_packet_create(&data,sizeof(packet2),0); // unreliable packet
+				enet_peer_send(peer,2,packet);
+			}
 			this_thread::sleep_for(chrono::milliseconds(32)); // ticks 32 milliseconds
+			old_position = data;
 			tick++;
 		}
 	}
 	void event_handler() {
-		bool _world_update = false;
+		bool _world_update ;
 		while(running_handle) {
-
+			_world_update = false;
 			while(enet_host_service(client,&net_event,1) > 0) {
 				if(net_event.type == ENET_EVENT_TYPE_CONNECT) {}
 				if(net_event.type == ENET_EVENT_TYPE_DISCONNECT) {
@@ -145,10 +150,49 @@ public:
 							_world_update = true;
 						}
 					}
+					else if(net_event.channelID == 2) {
+
+
+							printf("recived new players infos\n");
+
+							players_num = net_event.packet->dataLength / sizeof(packet2);
+
+							uint16_t updatedPositions = 0;
+
+							packet2* data = (packet2*)net_event.packet->data;
+
+							for(int i = 0; i < *sceneSize; i++) {
+								if(updatedPositions < players_num && scene[i].isPlayer) {
+									const packet2& pos = data[updatedPositions];
+									scene[i]._min = pos - vec3{.25,.25,.25};
+									scene[i]._max = pos + vec3{.25,.25,.25};
+									updatedPositions++;
+								}
+
+							}
+
+
+							if(updatedPositions < players_num) {
+								uint16_t toAdd = (players_num - updatedPositions);
+								for(int i = 0; i < toAdd; i++) {
+									const packet2& pos = data[updatedPositions];
+
+									cube(pos - vec3{.25,.25,.25},pos+vec3{.25,.25,.25},scene,*sceneSize,material(diffuse),block_textures[cobblestone_block],default_normal_map);
+									scene[(*sceneSize) - 1].isPlayer = true;
+									updatedPositions++;
+								}
+							}
+							
+
+							
+							
+							_world_update = true;
+						
+					}
 				}
 			}
 
-			updated_world = _world_update;
+			updated_world |= _world_update;
 		}
 	}
 	void start() {

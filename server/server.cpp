@@ -28,19 +28,19 @@ struct packet1 { // destroy block ch 1
 	int32_t x,y,z;
 };
 
-struct packet2 {
+struct vec3 {
     float x,y,z;
 };
 
-typedef packet2 vec3;
+typedef vec3 packet2; // player data recived from client
 
 struct player {
     vec3 position;
-    int32_t ____; //
     uint64_t identifier;
 };
 
 unordered_set<packet0,packet0hash> world;
+bool broadcast_players_info = false;
 
 int _main() { // change for server compilation keep for client compilation
     if(enet_initialize() != 0) {
@@ -73,12 +73,16 @@ int _main() { // change for server compilation keep for client compilation
 
     ENetEvent event;
 
+ 
+
     while(true) {
+        // send player positions
 
         while(enet_host_service(server,&event,1)>0) {
 
             switch(event.type) {
                 case ENET_EVENT_TYPE_CONNECT: {
+                    broadcast_players_info = true;
                     printf("A new client connected from %x:%u.\n",event.peer->address.host,event.peer->address.port);
                     event.peer->data = new player;
                     (*(player*)event.peer->data).identifier = *((uint64_t*)&event.peer->address); // convert address bytes to 
@@ -111,6 +115,7 @@ int _main() { // change for server compilation keep for client compilation
                             
                         }
                         else if(event.channelID == 2 && event.packet->dataLength == sizeof(packet2)) {
+                            broadcast_players_info = true;
                             const packet2& data = *(packet2*)event.packet->data;
                             (*(player*)event.peer->data).position = data;
                             printf("new player position: %f %f %f\n",data.x,data.y,data.z);
@@ -130,6 +135,25 @@ int _main() { // change for server compilation keep for client compilation
                     break;
                 }
                 
+            }
+            if(broadcast_players_info) {
+
+                for(int i = 0; i < server->connectedPeers; i++) { // send for each connected peer
+                    int writes = 0;
+                    packet2* personal_player_data = new packet2[server->connectedPeers-1];
+                    for(int j = 0; j < server->connectedPeers; j++) {
+                        if(i!=j) {
+                            personal_player_data[writes] = (*(player*)server->peers[j].data).position;
+                            writes++;
+                        }
+                    }
+                    
+                    enet_peer_send(&server->peers[i],2,enet_packet_create(personal_player_data,(server->connectedPeers - 1) * sizeof(packet2),NULL));
+                    delete[] personal_player_data;
+                }
+                //enet_host_broadcast(server,2,enet_packet_create(player_data,server->connectedPeers*sizeof(packet2),NULL)); // send unreliable packet of players infos
+                printf("sent players infos for %llu peers\n",server->connectedPeers);
+                broadcast_players_info = false;
             }
         }
 

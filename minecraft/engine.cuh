@@ -133,10 +133,6 @@ public:
 		lastPitch = pitch,lastYaw = yaw;
 		changed_scene = false;
 	}
-	void import_scene_from_host(const Scene* h_scene) {
-		cudaMemcpy(scene,h_scene,sizeof(Scene),cudaMemcpyHostToDevice);
-		changed_scene = true;
-	}
 	void import_scene_from_host_array(cube* h_scene,const size_t h_sceneSize,const int bvh_max_depth) {
 		tree.build(bvh_max_depth,h_scene,h_sceneSize);
 		Scene* h_scene_soa = new Scene;
